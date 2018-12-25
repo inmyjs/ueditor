@@ -11,6 +11,10 @@
 
 效果图：
 
+![](https://raw.githubusercontent.com/wiki/inmyjs/ueditor/images/1.png)
+![](https://raw.githubusercontent.com/wiki/inmyjs/ueditor/images/2.png)
+![](https://raw.githubusercontent.com/wiki/inmyjs/ueditor/images/3.png)
+
 ### 使用方法
 1. 下载源码，放至静态资源目录
 2. 在页面引用
