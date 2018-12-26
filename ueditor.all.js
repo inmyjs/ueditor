@@ -3043,6 +3043,21 @@ var domUtils = dom.domUtils = {
 
         return arr;
     },
+    getElementsByTagNameStyle: function (e, t, i) {
+        if (i && utils.isString(i)) {
+            var n = i;
+            i = function (e) {
+                for (var t, i = n.split(","), o = !0, r = e.getAttribute("style"), a = 0; t = i[a++];) if (!r || r.indexOf(t) < 0) {
+                    o = !1;
+                    break
+                }
+                return o
+            }
+        }
+        t = utils.trim(t).replace(/[ ]{2,}/g, " ").split(" ");
+        for (var o, r = [], a = 0; o = t[a++];) for (var s, l = e.getElementsByTagName(o), d = 0; s = l[d++];) i && !i(s) || r.push(s);
+        return r
+    },
     /**
      * 将节点node提取到父节点上
      * @method mergeToParent
@@ -23183,103 +23198,89 @@ UE.plugins['customstyle'] = function() {
  * 远程图片抓取,当开启本插件时所有不符合本地域名的图片都将被抓取成为本地服务器上的图片
  */
 UE.plugins['catchremoteimage'] = function () {
-    var me = this,
-        ajax = UE.ajax;
-
-    /* 设置默认值 */
-    if (me.options.catchRemoteImageEnable === false) return;
-    me.setOpt({
-        catchRemoteImageEnable: false
-    });
-
-    me.addListener("afterpaste", function () {
-        me.fireEvent("catchRemoteImage");
-    });
-
-    me.addListener("catchRemoteImage", function () {
-
-        var catcherLocalDomain = me.getOpt('catcherLocalDomain'),
-            catcherActionUrl = me.getActionUrl(me.getOpt('catcherActionName')),
-            catcherUrlPrefix = me.getOpt('catcherUrlPrefix'),
-            catcherFieldName = me.getOpt('catcherFieldName');
-
-        var remoteImages = [],
-            imgs = domUtils.getElementsByTagName(me.document, "img"),
-            test = function (src, urls) {
-                if (src.indexOf(location.host) != -1 || /(^\.)|(^\/)/.test(src)) {
-                    return true;
-                }
-                if (urls) {
-                    for (var j = 0, url; url = urls[j++];) {
-                        if (src.indexOf(url) !== -1) {
-                            return true;
-                        }
-                    }
-                }
-                return false;
-            };
-
-        for (var i = 0, ci; ci = imgs[i++];) {
-            if (ci.getAttribute("word_img")) {
-                continue;
-            }
-            var src = ci.getAttribute("_src") || ci.src || "";
-            if (/^(https?|ftp):/i.test(src) && !test(src, catcherLocalDomain)) {
-                remoteImages.push(src);
-            }
-        }
-
-        if (remoteImages.length) {
-            catchremoteimage(remoteImages, {
-                //成功抓取
-                success: function (r) {
-                    try {
-                        var info = r.state !== undefined ? r:eval("(" + r.responseText + ")");
-                    } catch (e) {
-                        return;
-                    }
-
-                    /* 获取源路径和新路径 */
-                    var i, j, ci, cj, oldSrc, newSrc, list = info.list;
-
-                    for (i = 0; ci = imgs[i++];) {
-                        oldSrc = ci.getAttribute("_src") || ci.src || "";
-                        for (j = 0; cj = list[j++];) {
-                            if (oldSrc == cj.source && cj.state == "SUCCESS") {  //抓取失败时不做替换处理
-                                newSrc = catcherUrlPrefix + cj.url;
-                                domUtils.setAttributes(ci, {
-                                    "src": newSrc,
-                                    "_src": newSrc
-                                });
-                                break;
-                            }
-                        }
-                    }
-                    me.fireEvent('catchremotesuccess')
-                },
-                //回调失败，本次请求超时
-                error: function () {
-                    me.fireEvent("catchremoteerror");
-                }
-            });
-        }
-
-        function catchremoteimage(imgs, callbacks) {
-            var params = utils.serializeParam(me.queryCommandValue('serverparam')) || '',
-                url = utils.formatUrl(catcherActionUrl + (catcherActionUrl.indexOf('?') == -1 ? '?':'&') + params),
-                isJsonp = utils.isCrossDomainUrl(url),
-                opt = {
-                    'method': 'POST',
-                    'dataType': isJsonp ? 'jsonp':'',
-                    'timeout': 60000, //单位：毫秒，回调请求超时设置。目标用户如果网速不是很快的话此处建议设置一个较大的数值
-                    'onsuccess': callbacks["success"],
-                    'onerror': callbacks["error"]
+    var me = this, ajax = UE.ajax;
+    !1 !== me.options.catchRemoteImageEnable && (me.setOpt({catchRemoteImageEnable: !1}), me.addListener("afterpaste", function () {
+        me.fireEvent("catchRemoteImage")
+    }), me.addListener("catchRemoteImage", function () {
+        function catchremoteimage(e, t) {
+            console.log(e);
+            var i = utils.serializeParam(me.queryCommandValue("serverparam")) || "",
+                n = utils.formatUrl(catcherActionUrl + (-1 == catcherActionUrl.indexOf("?") ? "?" : "&") + i),
+                o = utils.isCrossDomainUrl(n), r = {
+                    method: "POST",
+                    dataType: o ? "jsonp" : "",
+                    timeout: 6e4,
+                    onsuccess: t.success,
+                    onerror: t.error
                 };
-            opt[catcherFieldName] = imgs;
-            ajax.request(url, opt);
+            r[catcherFieldName] = e, ajax.request(n, r)
         }
 
-    });
+        for (var catcherLocalDomain = me.getOpt("catcherLocalDomain"), catcherActionUrl = me.getActionUrl(me.getOpt("catcherActionName")), catcherUrlPrefix = me.getOpt("catcherUrlPrefix"), catcherFieldName = me.getOpt("catcherFieldName"), remoteImages = [], imgs = domUtils.getElementsByTagName(me.document, "img"), test = function (e, t) {
+            if (-1 != e.indexOf(location.host) || /(^\.)|(^\/)/.test(e)) return !0;
+            if (t) for (var i, n = 0; i = t[n++];) if (-1 !== e.indexOf(i)) return !0;
+            return !1
+        }, backImgs = domUtils.getElementsByTagNameStyle(me.document, "section div p", "background,url"), remoteBackImgs = [], l = 0, ei; ei = backImgs[l++];) if (ei.getAttribute("style") && "true" != ei.getAttribute("is_updata")) {
+            var src = ei.getAttribute("style");
+            if (src.indexOf('url("') > 0) src = src.split('url("')[1].split('")')[0]; else if (src.indexOf("url('") > 0) src = src.split("url('")[1].split("')")[0]; else {
+                if (!(src.indexOf("url(") > 0)) continue;
+                src = src.split("url(")[1].split(")")[0]
+            }
+            /^(https?|ftp):/i.test(src) && !test(src, catcherLocalDomain) && (src.indexOf("?") >= 0 && (src = src.split("?")[0]), remoteBackImgs.push(src))
+        }
+        for (var i = 0, ci; ci = imgs[i++];) if (!ci.getAttribute("word_img") && "true" != ci.getAttribute("is_updata")) {
+            var src = ci.getAttribute("_src") || ci.src || "";
+            /^(https?|ftp):/i.test(src) && !test(src, catcherLocalDomain) && (src.indexOf("?") >= 0 && (src = src.split("?")[0]), remoteImages.push(src)), domUtils.addClass(ci, "loadingclass"), domUtils.setAttributes(ci, {src: me.options.UEDITOR_HOME_URL + "themes/default/images/spacer.gif"})
+        }
+        remoteBackImgs.length && catchremoteimage(remoteBackImgs, {
+            success: function (r) {
+                console.log("成功抓取");
+                try {
+                    var info = void 0 !== r.state ? r : eval("(" + r.responseText + ")")
+                } catch (e) {
+                    return void console.log("catch " + e)
+                }
+                var i, j, ci, cj, oldSrc, newSrc, styleText, list = info.list;
+                for (i = 0; ci = backImgs[i++];) {
+                    if (styleText = ci.getAttribute("style"), oldSrc = styleText, oldSrc.indexOf('url("') > 0) oldSrc = oldSrc.split('url("')[1].split('")')[0]; else if (oldSrc.indexOf("url('") > 0) oldSrc = oldSrc.split("url('")[1].split("')")[0]; else {
+                        if (!(oldSrc.indexOf("url(") > 0)) continue;
+                        oldSrc = oldSrc.split("url(")[1].split(")")[0]
+                    }
+                    for (oldSrc.indexOf("?") >= 0 && (oldSrc = oldSrc.split("?")[0]), j = 0; cj = list[j++];) if (oldSrc == cj.source && "SUCCESS" == cj.state) {
+                        newSrc = catcherUrlPrefix + cj.url, styleText = styleText.replace(oldSrc, newSrc), domUtils.setAttributes(ci, {style: styleText}), domUtils.setAttributes(ci, {is_updata: "true"});
+                        break
+                    }
+                }
+                me.fireEvent("catchremotesuccess")
+            }, error: function () {
+                me.fireEvent("catchremoteerror")
+            }
+        }), remoteImages.length && catchremoteimage(remoteImages, {
+            success: function (r) {
+                function setCashImg(e, t) {
+                    domUtils.removeClasses(ci, "loadingclass"), domUtils.setAttributes(t, {
+                        src: e,
+                        _src: e
+                    }), domUtils.setAttributes(t, {is_updata: "true"})
+                }
+
+                console.log("成功抓取");
+                try {
+                    var info = void 0 !== r.state ? r : eval("(" + r.responseText + ")")
+                } catch (e) {
+                    return void console.log("catch " + e)
+                }
+                var i, j, m, n, ci, cj, oldSrc, newSrc, cashItem, list = info.list, cashList = [], cashImgs = [];
+                for (m = 0; cashItem = list[m++];) for (i = 0; ci = imgs[i++];) if (oldSrc = ci.getAttribute("_src") || ci.src || "", oldSrc.indexOf("?") >= 0 && (oldSrc = oldSrc.split("?")[0]), oldSrc == cashItem.source && "SUCCESS" == cashItem.state) {
+                    cashImgs[m] = ci, cashList[m] = new Image, cashList[m].src = cashItem.url, cashList[m].onload = setCashImg(cashList[m].src, cashImgs[m]);
+                    break
+                }
+                me.fireEvent("catchremotesuccess")
+            }, error: function () {
+                me.fireEvent("catchremoteerror")
+            }
+        })
+    }))
 };
 
 // plugins/snapscreen.js
@@ -28667,6 +28668,7 @@ UE.ui = baidu.editor.ui = {};
                 me = this;
 
             editor.addListener('ready', function () {
+                editor.ui.getDom('elementpath').innerHTML = editor.getLang("friendTip");
                 //提供getDialog方法
                 editor.getDialog = function (name) {
                     return editor.ui._dialogs[name + "Dialog"];
@@ -28708,7 +28710,6 @@ UE.ui = baidu.editor.ui = {};
 
                 if (!editor.selection.isFocus())return;
                 editor.fireEvent('selectionchange', false, true);
-
 
             });
 
@@ -29578,7 +29579,4 @@ UE.registerUI('autosave', function(editor) {
     })
 
 });
-})(), window.onload = function () {
-    var e = document.getElementsByClassName("edui-editor-bottombar");
-    if (e.length) for (var t, i = 0; t = e[i++];) t.innerHTML = "友情提示：支持第三方微信编辑器的内容复制";
-};
+})();
